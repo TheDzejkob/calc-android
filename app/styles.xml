@@ -1,0 +1,7 @@
+<!-- res/values/styles.xml -->
+<style name="CalcButton">
+    <item name="android:layout_width">80dp</item>
+    <item name="android:layout_height">80dp</item>
+    <item name="android:textSize">40sp</item>
+    <item name="cornerRadius">10dp</item>
+</style>
