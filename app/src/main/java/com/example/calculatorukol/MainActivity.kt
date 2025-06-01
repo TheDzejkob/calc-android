@@ -1,124 +1,197 @@
-package com.example.calculatorukol
-import android.view.View
-import android.os.Bundle
-import android.widget.TextView
-import android.widget.Toast
-import androidx.activity.enableEdgeToEdge
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
-import java.math.BigInteger
+package com.example.calculatorukol;
+import android.view.View;
+import android.os.Bundle;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.activity.enableEdgeToEdge;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+import java.math.BigInteger;
+import android.media.MediaPlayer;
 
-var firstNum:String? = "";
-var operator:String? = "";
-var secondNum:String? = "";
-// kvuli int overflow při 16! a víš (ani Long nestačí big integer se dinamicky zvětšuje) nini zvlasdne tolik faktorialu kolik utahne procak telefonu
-var result:BigInteger? = null;
-var resolve:Boolean? = false;
-var isOperator:Boolean? = false;
-var wantSecondNum:Boolean? = false;
-
+var firstNum: String = "";
+var operator: String = "";
+var secondNum: String = "";
+var result: BigInteger? = null; // BigInteger pro podporu velkých čísel (alokuje se dynamicky lolísek :P)
+var resolve: Boolean = false;
+var isOperator: Boolean = false;
+var wantSecondNum: Boolean = false;
 
 class MainActivity : AppCompatActivity() {
+    private var buttonSound: MediaPlayer? = null;
+
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        super.onCreate(savedInstanceState);
+        enableEdgeToEdge();
 
-        setContentView(R.layout.activity_main)
+        setContentView(R.layout.activity_main);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            insets;
+        };
+        buttonSound = MediaPlayer.create(this, R.raw.click_sound);
+
+        // Zakázat výchozí zvuk tlačítek pro všechna tlačítka
+        val root = findViewById<View>(R.id.linearLayout);
+        disableButtonSounds(root);
+    }
+
+    override fun onDestroy() {
+        super.onDestroy();
+        buttonSound?.release();
+        buttonSound = null;
+    }
+
+    fun disableButtonSounds(view: View) {
+        if (view is android.widget.Button) {
+            view.isSoundEffectsEnabled = false;
+        } else if (view is android.view.ViewGroup) {
+            for (i in 0 until view.childCount) {
+                disableButtonSounds(view.getChildAt(i));
+            }
         }
     }
+
+    fun playButtonSound() {
+        buttonSound?.let {
+            if (it.isPlaying) {
+                it.seekTo(0);
+            };
+            it.start();
+        };
+    }
+
     fun onClick(view: View) {
-
-        var tag = view.tag.toString()
-            val textView = findViewById<TextView>(R.id.AnswearDisplay)
-            textView.text = tag;
-        if (tag == "="){
-            resolve = true;
-            isOperator = false;
-            updateDisplay();
-        }
-        else if (tag == "C"){
-            firstNum = null;
-            operator = "";
-            secondNum = null;
-            result = null;
-            wantSecondNum = false;
-            updateDisplay()
-        }
-        else if (tag == "!"){
-            if (firstNum != null) {
-                var num = firstNum!!.toInt();
-                calcFactorial(num);
-                resolve = true;
-                updateDisplay();
+        playButtonSound();
+        val tag = view.tag.toString();
+        when {
+            tag == "=" -> {
+                onEqualsPressed();
             }
-        }
-        else if (tag == "del"){
-            if(wantSecondNum == false){
-                val tempFirstNum = firstNum
-                if (!tempFirstNum.isNullOrEmpty()) {
-                    firstNum = tempFirstNum.dropLast(1)
-                }
-
+            tag == "C" -> {
+                onClearPressed();
             }
-            else{
-                val tempSecondNum = secondNum
-                if (!tempSecondNum.isNullOrEmpty()) {
-                    secondNum = tempSecondNum.dropLast(1)
-                }
+            tag == "!" -> {
+                onFactorialPressed();
             }
-            updateDisplay()
-        }
-        else if (tag.matches(Regex("\\d+"))) {
-            firstNum += tag;
-            updateDisplay();
-        }
-
-
-        // pokud je to čislo prida se do variable a updatne display pokud ne je to znamenko a bere se jako rozhodovač
-        // pote druhe cislo (pokud se nejedna o delete nebo faktorial)
-
-
+            tag == "del" -> {
+                onDeletePressed();
+            }
+            tag.matches(Regex("[+\\-*/]")) -> {
+                onOperatorPressed(tag);
+            }
+            tag.matches(Regex("\\d")) -> {
+                onNumberPressed(tag);
+            }
+        };
+        updateDisplay();
     }
-    fun updateDisplay() {
-        val answearDisplay = findViewById<TextView>(R.id.AnswearDisplay)
-        val ProblemDisplay = findViewById<TextView>(R.id.probleDisplay)
 
-
-        if (resolve == true) {
-            answearDisplay.text = result.toString();
-            resolve = false;
+    fun onNumberPressed(num: String) {
+        if (!wantSecondNum) {
+            if (firstNum == "0") firstNum = "";
+            firstNum += num;
+        } else {
+            if (secondNum == "0") secondNum = "";
+            secondNum += num;
         }
-        else{
-            if (wantSecondNum == false) {
-                ProblemDisplay.text = firstNum;
-            }
+    }
 
+    fun onOperatorPressed(op: String) {
+        if (firstNum.isNotEmpty() && !wantSecondNum) {
+            operator = op;
+            wantSecondNum = true;
+        }
+    }
+
+    fun onEqualsPressed() {
+        if (firstNum.isNotEmpty() && operator.isNotEmpty() && secondNum.isNotEmpty()) {
+            result = calculateResult();
+            resolve = true;
+            // Reset pro další výpočet
+            firstNum = result.toString();
+            secondNum = "";
+            operator = "";
+            wantSecondNum = false;
+        }
+    }
+
+    fun onClearPressed() {
+        firstNum = "";
+        operator = "";
+        secondNum = "";
+        result = null;
+        wantSecondNum = false;
+        resolve = false;
+    }
+
+    fun onDeletePressed() {
+        if (!wantSecondNum) {
+            if (firstNum.isNotEmpty()) firstNum = firstNum.dropLast(1);
+        } else {
+            if (secondNum.isNotEmpty()) secondNum = secondNum.dropLast(1);
+        }
+    }
+
+    fun onFactorialPressed() {
+        if (!wantSecondNum && firstNum.isNotEmpty()) {
+            val num = firstNum.toInt();
+            calcFactorial(num);
+            resolve = true;
+            // Reset pro další výpočet
+            firstNum = result.toString();
+            secondNum = "";
+            operator = "";
+            wantSecondNum = false;
+        }
+    }
+
+    fun updateDisplay() {
+        val answearDisplay = findViewById<TextView>(R.id.AnswearDisplay);
+        val problemDisplay = findViewById<TextView>(R.id.probleDisplay);
+
+        if (resolve && result != null) {
+            answearDisplay.text = result.toString();
+            problemDisplay.text = "";
+            resolve = false;
+        } else {
+            val problemText = buildString {
+                append(firstNum);
+                if (operator.isNotEmpty()) append(" $operator ");
+                if (secondNum.isNotEmpty()) append(secondNum);
+            };
+            problemDisplay.text = problemText;
             answearDisplay.text = "";
         }
+    }
 
-
-
-
-
+    fun calculateResult(): BigInteger? {
+        return try {
+            val num1 = BigInteger(firstNum);
+            val num2 = BigInteger(secondNum);
+            when (operator) {
+                "+" -> num1.add(num2);
+                "-" -> num1.subtract(num2);
+                "*" -> num1.multiply(num2);
+                "/" -> if (num2 != BigInteger.ZERO) num1.divide(num2) else null;
+                else -> null;
+            }
+        } catch (e: Exception) {
+            null;
+        }
     }
 
     fun calcFactorial(value: Int) {
         if (value < 0) {
-            result = null // Factorial nemuže byt z negativniho (jsem trouba a debugoval to hoďku proč to děla :D)
-            return
+            result = null;
+            return;
         }
-
-        var fact = BigInteger.ONE
+        var fact = BigInteger.ONE;
         for (i in 1..value) {
-            fact = fact.multiply(BigInteger.valueOf(i.toLong()))
+            fact = fact.multiply(BigInteger.valueOf(i.toLong()));
         }
-
-        result = fact
+        result = fact;
     }
-
 }
