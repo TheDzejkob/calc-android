@@ -84,8 +84,8 @@
 
             <Button
                 style="@style/CalcButton"
-                android:text="!"
-                android:tag="!"
+                android:text="log"
+                android:tag="log"
                 android:onClick="onClick"/>
 
             <Button
