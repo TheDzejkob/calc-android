@@ -1,4 +1,5 @@
 package com.example.calculatorukol;
+
 import android.view.View;
 import android.os.Bundle;
 import android.widget.TextView;
@@ -8,7 +9,6 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import java.math.BigInteger;
-import android.media.MediaPlayer;
 import kotlin.math.log10;
 
 var firstNum: String = "";
@@ -16,11 +16,9 @@ var operator: String = "";
 var secondNum: String = "";
 var result: String? = null;
 var resolve: Boolean = false;
-var isOperator: Boolean = false;
 var wantSecondNum: Boolean = false;
 
 class MainActivity : AppCompatActivity() {
-    private var buttonSound: MediaPlayer? = null;
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState);
@@ -32,40 +30,9 @@ class MainActivity : AppCompatActivity() {
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             insets;
         };
-        buttonSound = MediaPlayer.create(this, R.raw.click_sound);
-
-        // Zakázat výchozí zvuk tlačítek pro všechna tlačítka
-        val root = findViewById<View>(R.id.linearLayout);
-        disableButtonSounds(root);
-    }
-
-    override fun onDestroy() {
-        super.onDestroy();
-        buttonSound?.release();
-        buttonSound = null;
-    }
-
-    fun disableButtonSounds(view: View) {
-        if (view is android.widget.Button) {
-            view.isSoundEffectsEnabled = false;
-        } else if (view is android.view.ViewGroup) {
-            for (i in 0 until view.childCount) {
-                disableButtonSounds(view.getChildAt(i));
-            }
-        }
-    }
-
-    fun playButtonSound() {
-        buttonSound?.let {
-            if (it.isPlaying) {
-                it.seekTo(0);
-            };
-            it.start();
-        };
     }
 
     fun onClick(view: View) {
-        playButtonSound();
         val tag = view.tag.toString();
         when {
             tag == "=" -> {
@@ -90,7 +57,7 @@ class MainActivity : AppCompatActivity() {
         updateDisplay();
     }
 
-    fun onNumberPressed(num: String) {
+    private fun onNumberPressed(num: String) {
         if (!wantSecondNum) {
             if (firstNum == "0") firstNum = "";
             firstNum += num;
@@ -100,18 +67,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun onOperatorPressed(op: String) {
+    private fun onOperatorPressed(op: String) {
         if (firstNum.isNotEmpty() && !wantSecondNum) {
             operator = op;
             wantSecondNum = true;
         }
     }
 
-    fun onEqualsPressed() {
+    private fun onEqualsPressed() {
         if (firstNum.isNotEmpty() && operator.isNotEmpty() && secondNum.isNotEmpty()) {
             result = calculateResult();
             resolve = true;
-            // Reset pro další výpočet
             if (result != null) {
                 firstNum = result!!;
             } else {
@@ -123,7 +89,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun onClearPressed() {
+    private fun onClearPressed() {
         firstNum = "";
         operator = "";
         secondNum = "";
@@ -132,7 +98,7 @@ class MainActivity : AppCompatActivity() {
         resolve = false;
     }
 
-    fun onDeletePressed() {
+    private fun onDeletePressed() {
         if (!wantSecondNum) {
             if (firstNum.isNotEmpty()) firstNum = firstNum.dropLast(1);
         } else {
@@ -140,7 +106,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun onLogPressed() {
+    private fun onLogPressed() {
         if (!wantSecondNum && firstNum.isNotEmpty()) {
             try {
                 val num = firstNum.toDouble();
@@ -161,7 +127,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun updateDisplay() {
+    private fun updateDisplay() {
         val answearDisplay = findViewById<TextView>(R.id.AnswearDisplay);
         val problemDisplay = findViewById<TextView>(R.id.probleDisplay);
 
@@ -180,7 +146,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    fun calculateResult(): String? {
+    private fun calculateResult(): String? {
         return try {
             val num1 = BigInteger(firstNum);
             val num2 = BigInteger(secondNum);
